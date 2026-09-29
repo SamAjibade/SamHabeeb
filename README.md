@@ -1,400 +1,292 @@
-# realcloud\_java-new\_project
+# Java Web App CI/CD Deployment with Jenkins, Tomcat, Maven, and Terraform on AWS
 
-\# Java Web App CI/CD Deployment with Jenkins, Tomcat, Maven, and Terraform on AWS
+## Project Overview
 
+This project demonstrates how I deployed a Java web application to an Apache Tomcat server using a Jenkins CI/CD pipeline and AWS infrastructure provisioned with Terraform.
 
+The goal was to build an end-to-end DevOps workflow where Jenkins pulls source code from GitHub, builds the Java application with Maven, creates a WAR file, and deploys it to Apache Tomcat.
 
-\## Project Overview
-
-
-
-This project demonstrates how I deployed a Java web application to an Apache Tomcat server using Jenkins CI/CD automation and Terraform-provisioned AWS infrastructure.
-
-
-
-The goal was to build an end-to-end DevOps pipeline where Jenkins pulls source code from GitHub, builds the Java application with Maven, creates a WAR file, and deploys it to Apache Tomcat.
-
-
-
-\## Architecture
-
-
+## Architecture
 
 ```text
-
 GitHub
-
-&#x20; ↓
-
+  ↓
 Jenkins
-
-&#x20; ↓
-
+  ↓
 Maven Build
-
-&#x20; ↓
-
+  ↓
 WAR File
-
-&#x20; ↓
-
+  ↓
 Apache Tomcat
-
-&#x20; ↓
-
+  ↓
 Browser
+```
 
+## Tools Used
 
+- AWS EC2
+- Terraform
+- Jenkins
+- Apache Tomcat 9
+- Maven
+- Java
+- Git and GitHub
+- Ubuntu Linux
+- VS Code
 
+## Infrastructure Provisioned with Terraform
 
+Terraform was used to create the AWS infrastructure for this project.
 
+Resources created:
 
+- VPC
+- Public subnet
+- Internet gateway
+- Route table
+- Route table association
+- Security group
+- Jenkins EC2 instance
+- Tomcat EC2 instance
 
+Inbound ports allowed in the security group:
 
+| Port | Purpose |
+|---|---|
+| 22 | SSH |
+| 80 | HTTP |
+| 443 | HTTPS |
+| 8080 | Jenkins and Tomcat |
 
+## Jenkins Pipeline
 
+The Jenkins pipeline contains four main stages:
 
-Tools Used
+1. Checkout SCM
+2. Test
+3. Build
+4. Deploy to Tomcat
 
-\- AWS EC2
+## Jenkinsfile
 
-\- Terraform
-
-\- Jenkins
-
-\- Apache Tomcat 9
-
-\- Maven
-
-\- Java
-
-\- Git and GitHub
-
-\- Ubuntu Linux
-
-\- VS Code
-
-Infrastructure with Terraform
-
-Terraform was used to create the AWS infrastructure, including:
-
-\- VPC
-
-\- Public subnet
-
-\- Internet gateway
-
-\- Route table
-
-\- Route table association
-
-\- Security group
-
-\- Jenkins EC2 instance
-
-\- Tomcat EC2 instance
-
-The security group allowed inbound traffic on:
-
-22    SSH
-
-80    HTTP
-
-443   HTTPS
-
-8080  Jenkins and Tomcat
-
-
-
-
-
-Jenkins Pipeline
-
-The Jenkins pipeline contains the following stages:
-
-1\. Checkout SCM
-
-2\. Test
-
-3\. Build
-
-4\. Deploy to Tomcat
-
-
-
-
-
-The final Jenkinsfile:
-
-
-
-
-
+```groovy
 pipeline {
+    agent any
 
-&#x20;   agent any
+    stages {
+        stage('Test') {
+            steps {
+                sh 'cd SampleWebApp && mvn test'
+            }
+        }
 
+        stage('Build') {
+            steps {
+                sh 'cd SampleWebApp && mvn clean package'
+            }
+        }
 
-
-&#x20;   stages {
-
-&#x20;       stage('Test') {
-
-&#x20;           steps {
-
-&#x20;               sh 'cd SampleWebApp \&\& mvn test'
-
-&#x20;           }
-
-&#x20;       }
-
-
-
-&#x20;       stage('Build') {
-
-&#x20;           steps {
-
-&#x20;               sh 'cd SampleWebApp \&\& mvn clean package'
-
-&#x20;           }
-
-&#x20;       }
-
-
-
-&#x20;       stage('Deploy to Tomcat') {
-
-&#x20;           steps {
-
-&#x20;               deploy adapters: \[
-
-&#x20;                   tomcat9(
-
-&#x20;                       credentialsId: 'tomcat-admin',
-
-&#x20;                       path: '',
-
-&#x20;                       url: 'http://TOMCAT\_PUBLIC\_IP:8080/'
-
-&#x20;                   )
-
-&#x20;               ],
-
-&#x20;               contextPath: 'webapp',
-
-&#x20;               war: 'SampleWebApp/target/SampleWebApp.war'
-
-&#x20;           }
-
-&#x20;       }
-
-&#x20;   }
-
+        stage('Deploy to Tomcat') {
+            steps {
+                deploy adapters: [
+                    tomcat9(
+                        credentialsId: 'tomcat-admin',
+                        path: '',
+                        url: 'http://TOMCAT_PUBLIC_IP:8080/'
+                    )
+                ],
+                contextPath: 'webapp',
+                war: 'SampleWebApp/target/SampleWebApp.war'
+            }
+        }
+    }
 }
+```
 
-
-
-
-
-Tomcat Configuration
+## Tomcat Configuration
 
 Tomcat was configured to allow Jenkins to deploy WAR files remotely.
 
 The Tomcat users file was edited:
 
+```bash
 sudo vim /etc/tomcat9/tomcat-users.xml
-
-
+```
 
 The following roles and user were added:
 
+```xml
 <role rolename="manager-gui"/>
-
 <role rolename="manager-script"/>
-
 <role rolename="admin-gui"/>
-
 <role rolename="admin-script"/>
-
 <user username="admin" password="example-password" roles="manager-gui,manager-script,admin-gui,admin-script"/>
+```
 
+Tomcat was restarted after the configuration change:
 
-
-
-
-Tomcat was restarted:
-
+```bash
 sudo systemctl restart tomcat9
+```
 
+## Problems I Faced and How I Solved Them
 
+### 1. AWS Credentials Error
 
+Terraform failed with this error:
 
-
-Problems I Faced and How I Fixed Them:
-
-
-
-1\. AWS Credentials Error
-
-Terraform failed with:
-
+```text
 InvalidClientTokenId: The security token included in the request is invalid
+```
 
-I fixed it by reconfiguring AWS credentials:
+I fixed it by reconfiguring my AWS credentials:
 
+```bash
 aws configure
-
 aws sts get-caller-identity
+```
 
+### 2. EC2 Availability Zone Error
 
-
-2\. EC2 Availability Zone Error:
-
-
-
-Terraform failed because the instance type was not supported in one Availability Zone.
+Terraform failed because the selected instance type was not supported in one Availability Zone.
 
 I fixed it by choosing a supported Availability Zone:
 
-availability\_zone = "us-east-1a"
+```hcl
+availability_zone = "us-east-1a"
+```
 
-
-
-3\. SSH Key Permission Error:
-
-
+### 3. SSH Key Permission Error
 
 SSH failed because my private key permissions were too open.
 
-I fixed the Windows key permission using icacls.
+I fixed the private key permissions on Windows using `icacls`.
 
+### 4. Jenkins Installation Issue
 
+Jenkins was not installed correctly at first.
 
-4\. Jenkins Installation Issue:
+I checked the Jenkins service:
 
-
-
-Jenkins was not installed correctly at first. I checked the service:
-
+```bash
 sudo systemctl status jenkins
+```
 
-Then installed Jenkins manually and started the service.
+Then I installed Jenkins manually and started the service.
 
+### 5. Jenkins GPG Key Error
 
+While installing Jenkins, I got this error:
 
-
-
-5\. Jenkins GPG Key Error:
-
-
-
-While installing Jenkins, I got:
-
-NO\_PUBKEY 7198F4B714ABFC68
+```text
+NO_PUBKEY 7198F4B714ABFC68
+```
 
 I fixed it by using the newer Jenkins signing key.
 
+### 6. Maven WAR Plugin Error
 
+The Jenkins build failed because Maven was using an old WAR plugin:
 
-
-
-6\. Maven WAR Plugin Error:
-
-
-
-The Jenkins build failed because Maven used an old WAR plugin:
-
+```text
 maven-war-plugin:2.2
-
 Cannot access defaults field of Properties
+```
 
-I fixed it by adding a newer plugin version in pom.xml:
+I fixed it by adding a newer WAR plugin version in `pom.xml`:
 
+```xml
 <plugin>
-
-&#x20; <groupId>org.apache.maven.plugins</groupId>
-
-&#x20; <artifactId>maven-war-plugin</artifactId>
-
-&#x20; <version>3.4.0</version>
-
+  <groupId>org.apache.maven.plugins</groupId>
+  <artifactId>maven-war-plugin</artifactId>
+  <version>3.4.0</version>
 </plugin>
+```
 
+### 7. Jenkinsfile Command Error
 
+The original Jenkinsfile command was incorrect:
 
-
-
-7\. Jenkinsfile Command Error:
-
-
-
-The original command was wrong:
-
+```bash
 cd SampleWebApp mvn test
+```
 
+I fixed it by using `&&` to run the Maven command only after changing into the correct directory:
 
+```bash
+cd SampleWebApp && mvn test
+```
 
-
-
-I fixed it with:
-
-cd SampleWebApp \&\& mvn test
-
-
-
-8\. Tomcat Deployment Credentials Error:
-
-
+### 8. Tomcat Deployment Credentials Error
 
 Jenkins failed to deploy because Tomcat credentials were missing.
 
 I fixed it by:
 
-\- Creating a Tomcat user with manager-script
+- Creating a Tomcat user with the `manager-script` role
+- Adding Jenkins credentials with the ID `tomcat-admin`
+- Updating the Jenkinsfile to use `credentialsId: 'tomcat-admin'`
 
-\- Adding Jenkins credentials with ID tomcat-admin
+## Screenshots
 
-\- Updating the Jenkinsfile to use credentialsId: 'tomcat-admin'
+### Jenkins Dashboard
 
+![Jenkins Dashboard](images/jenkins-dashboard.png)
 
+### Failed Jenkins Builds During Troubleshooting
 
+![Failed Jenkins Builds](images/jenkins-failed-builds.png)
 
+### Successful Jenkins Pipeline
 
+![Successful Jenkins Pipeline](images/jenkins-success-pipeline.png)
 
+### Tomcat Homepage
 
+![Tomcat Homepage](images/tomcat-homepage.png)
 
+### Tomcat Manager
 
-Final Result
+![Tomcat Manager](images/tomcat-manager.png)
 
-The pipeline successfully deployed the Java web application to Apache Tomcat.
+### Deployed Java Web Application
+
+![Deployed Java Web Application](images/tomcat-deployed-app.png)
+
+## Final Result
+
+The Jenkins pipeline successfully built and deployed the Java web application to Apache Tomcat.
 
 Final application URL:
 
-http://TOMCAT\_PUBLIC\_IP:8080/webapp
+```text
+http://TOMCAT_PUBLIC_IP:8080/webapp
+```
 
-
-
-
-
-What I Learned
+## What I Learned
 
 Through this project, I learned how to:
 
-\- Provision AWS infrastructure using Terraform
+- Provision AWS infrastructure using Terraform
+- Install and configure Jenkins
+- Install and configure Apache Tomcat
+- Build Java applications with Maven
+- Deploy WAR files to Tomcat
+- Use Jenkins credentials securely
+- Debug Terraform, SSH, Jenkins, Maven, and Tomcat errors
+- Document a DevOps project professionally
 
-\- Install and configure Jenkins
+## Future Improvements
 
-\- Install and configure Apache Tomcat
+Possible improvements for this project:
 
-\- Build Java applications with Maven
+- Use private subnets for better security
+- Add an Application Load Balancer
+- Use AWS Secrets Manager for credentials
+- Add a GitHub webhook to trigger Jenkins automatically
+- Use Jenkins agents instead of building on the controller
+- Automate Jenkins and Tomcat configuration fully with Terraform user data
 
-\- Deploy WAR files to Tomcat
+## Security Note
 
-\- Use Jenkins credentials
-
-\- Debug CI/CD pipeline errors
-
-\- Document DevOps projects professionally
-
-
-
+The public IP addresses and passwords shown in this project were used only for lab and learning purposes. In a real production environment, secrets should not be hardcoded or committed to GitHub.
